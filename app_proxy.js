@@ -30,7 +30,8 @@ app.use('/wp-login.php', (req, res) => {
 app.use('/', (req, res) => {
     try {
         let url = rawUrl + req.originalUrl;
-        console.log(req.path);
+        console.log(url);
+        // return req.pipe(request(url)).pipe(res);
 
         let regUrlExt = new RegExp('.*\.(js)|(png)|(jpg)|(gif)|(svg)|(ico)|(css)|(woff)|(ttf)|(eot)|(otf)');
         if (regUrlExt.test(req.path)) {
@@ -43,34 +44,35 @@ app.use('/', (req, res) => {
                 if (cacheContent) {
                     let md5 = crypto.createHash('md5');
                     let fileName = './cache/' + md5.update(req.path).digest('hex');
-                    var writeStream = fs.createWriteStream(fileName, {autoClose:true});
+                    var writeStream = fs.createWriteStream(fileName, {
+                        autoClose: true
+                    });
                     writeStream.on('finish', () => {
                         let fileObject = cacheFile.get(req.path);
                         let readStream = fs.createReadStream(fileName);
                         res.set(fileObject.resp.headers);
                         readStream.pipe(res);
                     })
-                    req.pipe(request(url)).on('response', function(resp){
+                    
+                    request(url).on('response', function (resp) {
                         let respObject = {
                             path: fileName,
                             resp: resp
                         };
                         cacheFile.set(req.path, respObject);
-                    }).pipe(writeStream).on('end', () => {
-                        writeStream.end();
-                    })
+                    }).pipe(writeStream);
                 } else {
                     req.pipe(request(url)).pipe(res);
                 }
             }
-            
+
             return;
         }
 
         if (cacheContent && cacheObject.has(req.path)) {
             let cacheResp = cacheObject.get(req.path);
             res.set(cacheResp.headers);
-            
+
             return res.end(cacheResp.body);
         }
 
@@ -82,8 +84,8 @@ app.use('/', (req, res) => {
                 console.error(err);
             }
         })).pipe(res);
-    } catch(e) {
-      console.log(e);
+    } catch (e) {
+        console.log(e);
     }
 });
 
